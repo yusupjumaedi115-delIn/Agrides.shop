@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agrishop Desa</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2e7d32">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Poppins', 'Segoe UI', Roboto, Arial, sans-serif; margin: 0; background: #f5f8f5; }
+  header { background: #2e7d32; color: white; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+  header h1 { font-size: 20px; margin: 0; font-weight: 600; }
+  #cartBtn { background: none; border: none; color: white; font-size: 22px; cursor: pointer; position: relative; }
+  #cartCount { background: #ffeb3b; color: black; border-radius: 50%; padding: 2px 6px; font-size: 12px; position: absolute; top: -5px; right: -10px; }
+
+  .banner { background: linear-gradient(to right, #43a047, #2e7d32); color: white; text-align: center; padding: 15px; font-size: 16px; font-weight: 500; }
+
+  .search-box { display: flex; justify-content: center; margin: 10px; }
+  .search-box input { width: 90%; padding: 10px; border: 1px solid #c8e6c9; border-radius: 8px; font-size: 14px; }
+
+  .kategori { display: flex; justify-content: space-around; background: white; padding: 10px; border-bottom: 1px solid #ddd; overflow-x: auto; }
+  .kategori button { background: #fff; border: 1px solid #2e7d32; color: #2e7d32; border-radius: 20px; padding: 6px 15px; cursor: pointer; font-size: 14px; font-weight: 500; white-space: nowrap; transition: 0.3s; }
+  .kategori button.active, .kategori button:hover { background: #2e7d32; color: white; }
+
+  .produk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; padding: 10px; }
+  .produk { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; padding-bottom: 10px; transition: 0.2s; cursor: pointer; }
+  .produk:hover { transform: scale(1.02); }
+  .produk img { width: 100%; height: 150px; object-fit: cover; }
+  .produk h3 { font-size: 15px; margin: 8px 0 4px; color: #1b5e20; }
+  .produk p { color: #2e7d32; font-weight: bold; margin: 0; }
+
+  /* Popup produk detail */
+  #popupDetail { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6); z-index: 30; justify-content: center; align-items: center; }
+  .detailBox { background: white; border-radius: 10px; width: 90%; max-width: 420px; padding: 15px;
+    text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2); position: relative; }
+  .detailBox img { width: 100%; height: 220px; object-fit: cover; border-radius: 8px; }
+  .detailBox h3 { color: #2e7d32; margin: 10px 0 5px; }
+  .detailBox .rating { color: #fbc02d; margin-bottom: 5px; }
+  .detailBox p.desc { font-size: 14px; color: #333; margin-bottom: 8px; }
+  .detailBox p.price { font-weight: bold; color: #2e7d32; margin-bottom: 10px; }
+  .detailBox button { background: #2e7d32; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 15px; }
+  .detailBox button:hover { background: #1b5e20; }
+  .closeDetail { background: none; border: none; font-size: 22px; position: absolute; right: 10px; top: 5px; cursor: pointer; color: #2e7d32; }
+
+  #keranjang { display: none; background: white; padding: 15px; position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; z-index: 20; }
+  #keranjang h2 { color: #2e7d32; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 8px; border-bottom: 1px solid #ddd; text-align: center; }
+  .checkout { background: #2e7d32; color: white; border: none; width: 100%; padding: 12px; font-size: 16px; border-radius: 5px; cursor: pointer; font-weight: 500; }
+  .checkout:hover { background: #1b5e20; }
+  .closeCart { background: none; border: none; font-size: 22px; position: absolute; right: 15px; top: 10px; cursor: pointer; color: #2e7d32; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Agrishop Desa</h1>
+  <button id="cartBtn" aria-label="Keranjang">🛒<span id="cartCount">0</span></button>
+</header>
+
+<div class="banner">
+  🌱 Belanja hasil tani segar & produk unggulan desa langsung dari petani!
+</div>
+
+<div class="search-box">
+  <input type="text" id="search" placeholder="Cari produk pertanian...">
+</div>
+
+<div class="kategori" id="kategori">
+  <button class="active" onclick="filterKategori('semua')">Semua</button>
+  <button onclick="filterKategori('Sayur')">Sayur</button>
+  <button onclick="filterKategori('Pupuk')">Pupuk</button>
+  <button onclick="filterKategori('Bibit')">Bibit</button>
+  <button onclick="filterKategori('Olahan')">Olahan Desa</button>
+</div>
+
+<main class="produk-grid" id="produkList"></main>
+
+<!-- Popup Detail Produk -->
+<div id="popupDetail" role="dialog" aria-modal="true">
+  <div class="detailBox">
+    <button class="closeDetail" onclick="tutupDetail()" aria-label="Tutup">✖</button>
+    <img id="detailImg" src="" alt="produk">
+    <h3 id="detailNama"></h3>
+    <div class="rating" id="detailRating"></div>
+    <p class="desc" id="detailDesc"></p>
+    <p class="price" id="detailHarga"></p>
+    <button id="detailBtn">Tambah ke Keranjang</button>
+  </div>
+</div>
+
+<!-- Popup Keranjang -->
+<div id="keranjang" role="dialog" aria-modal="true">
+  <button class="closeCart" onclick="tutupKeranjang()">✖</button>
+  <h2>Keranjang Belanja</h2>
+  <table id="tabelKeranjang">
+    <thead><tr><th>Produk</th><th>Harga</th><th>Jumlah</th><th>Total</th><th></th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <h3>Total: Rp<span id="totalBelanja">0</span></h3>
+  <button class="checkout" onclick="checkout()">Checkout via WhatsApp</button>
+</div>
+
+<script>
+  const WA_NUMBER = "6285758273076"; // placeholder to be replaced
+
+  const produk = [
+    {"nama": "Sayur Segar", "harga": 10000, "kategori": "Sayur", "rating": 4.8, "deskripsi": "Sayur segar dari kebun desa tanpa pestisida, panen pagi langsung dikirim.", "img": "assets/sayur.jpg"},
+    {"nama": "Kangkung Organik", "harga": 8000, "kategori": "Sayur", "rating": 4.6, "deskripsi": "Kangkung sehat, ditanam secara organik.", "img": "assets/kangkung.jpg"},
+    {"nama": "Pupuk Organik", "harga": 25000, "kategori": "Pupuk", "rating": 4.7, "deskripsi": "Pupuk alami ramah lingkungan untuk meningkatkan hasil panen.", "img": "assets/pupuk.jpg"},
+    {"nama": "Beras Desa", "harga": 50000, "kategori": "Bibit", "rating": 4.9, "deskripsi": "Beras premium hasil sawah desa dengan cita rasa pulen.", "img": "assets/beras.jpg"},
+    {"nama": "Bibit Tomat", "harga": 15000, "kategori": "Bibit", "rating": 4.5, "deskripsi": "Bibit tomat unggul untuk panen maksimal.", "img": "assets/bibit_tomat.jpg"},
+    {"nama": "Madu Desa", "harga": 60000, "kategori": "Olahan", "rating": 4.6, "deskripsi": "Madu murni dari lebah hutan yang dikumpulkan oleh petani lokal.", "img": "assets/madu.jpg"},
+    {"nama": "Keripik Singkong", "harga": 12000, "kategori": "Olahan", "rating": 4.5, "deskripsi": "Cemilan khas desa dari singkong pilihan, gurih dan renyah.", "img": "assets/keripik.jpg"}
+  ];
+
+  const produkList = document.getElementById('produkList');
+  const keranjang = [];
+  const cartCount = document.getElementById('cartCount');
+  const popup = document.getElementById('popupDetail');
+
+  function tampilkanProduk(filter = 'semua') {
+    produkList.innerHTML = '';
+    const kataKunci = document.getElementById('search').value.toLowerCase();
+    produk.filter(p => 
+      (filter === 'semua' || p.kategori === filter) &&
+      p.nama.toLowerCase().includes(kataKunci)
+    ).forEach(p => {
+      const el = document.createElement('div');
+      el.className = 'produk';
+      el.tabIndex = 0;
+      el.setAttribute('role','button');
+      el.innerHTML = `
+        <img src="${p.img}" alt="${p.nama}">
+        <h3>${p.nama}</h3>
+        <p>Rp${p.harga.toLocaleString()}</p>
+      `;
+      el.addEventListener('click', ()=> lihatDetail(p.nama));
+      el.addEventListener('keydown', (ev)=> { if(ev.key==='Enter') lihatDetail(p.nama); });
+      produkList.appendChild(el);
+    });
+  }
+
+  function lihatDetail(nama) {
+    const p = produk.find(x => x.nama === nama);
+    document.getElementById('detailImg').src = p.img;
+    document.getElementById('detailNama').textContent = p.nama;
+    document.getElementById('detailDesc').textContent = p.deskripsi;
+    document.getElementById('detailHarga').textContent = "Rp" + p.harga.toLocaleString();
+    document.getElementById('detailRating').innerHTML = "⭐".repeat(Math.round(p.rating)) + ` (${p.rating})`;
+    document.getElementById('detailBtn').onclick = () => { tambahKeKeranjang(p.nama, p.harga); tutupDetail(); };
+    popup.style.display = "flex";
+    // focus for accessibility
+    document.querySelector('.detailBox').focus();
+  }
+
+  function tutupDetail() { popup.style.display = "none"; }
+
+  function filterKategori(kat) {
+    document.querySelectorAll('.kategori button').forEach(b => b.classList.remove('active'));
+    if (event && event.target) event.target.classList.add('active');
+    tampilkanProduk(kat);
+  }
+
+  document.getElementById('search').addEventListener('input', () => tampilkanProduk());
+
+  function tambahKeKeranjang(nama, harga) {
+    const item = keranjang.find(p => p.nama === nama);
+    if (item) item.jumlah++;
+    else keranjang.push({ nama, harga, jumlah: 1 });
+    updateKeranjang();
+  }
+
+  function updateKeranjang() {
+    cartCount.textContent = keranjang.reduce((a,b) => a + b.jumlah, 0);
+    const tbody = document.querySelector('#tabelKeranjang tbody');
+    tbody.innerHTML = '';
+    let total = 0;
+    keranjang.forEach((p, i) => {
+      const subtotal = p.harga * p.jumlah;
+      total += subtotal;
+      tbody.innerHTML += `
+        <tr>
+          <td>${p.nama}</td>
+          <td>Rp${p.harga.toLocaleString()}</td>
+          <td>${p.jumlah}</td>
+          <td>Rp${subtotal.toLocaleString()}</td>
+          <td><button onclick="hapusItem(${i})">🗑️</button></td>
+        </tr>`;
+    });
+    document.getElementById('totalBelanja').textContent = total.toLocaleString();
+  }
+
+  function hapusItem(i) {
+    keranjang.splice(i, 1);
+    updateKeranjang();
+  }
+
+  function checkout() {
+    if (keranjang.length === 0) return alert("Keranjang masih kosong!");
+    const pesan = keranjang.map(p => `• ${p.nama} x${p.jumlah}`).join('%0A');
+    const total = document.getElementById('totalBelanja').textContent;
+    const url = `https://wa.me/${WA_NUMBER}?text=Halo%20saya%20ingin%20pesan:%0A${pesan}%0A%0ATotal:%20Rp${total}`;
+    window.open(url, '_blank');
+  }
+
+  document.getElementById('cartBtn').onclick = () => document.getElementById('keranjang').style.display = 'block';
+  function tutupKeranjang() { document.getElementById('keranjang').style.display = 'none'; }
+
+  // register service worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js')
+      .then(() => console.log('Service Worker aktif!'))
+      .catch(err => console.log('SW gagal:', err));
+    });
+  }
+
+  // initial product list
+  tampilkanProduk();
+</script>
+
+</body>
+</html>
